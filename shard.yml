@@ -2,7 +2,7 @@ name: gladiat_ur
 version: 0.1.0
 
 authors:
-  - Holger Arndt <holger.arndt@hetzner.com>
+  - Holger Arndt <gladiat-ur@kjarrigan.de>
 
 targets:
   gladiat_ur:
