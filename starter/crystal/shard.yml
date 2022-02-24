@@ -1,0 +1,17 @@
+name: crystal
+version: 0.1.0
+
+authors:
+  - Kjarrigan <github@kjarrigan.de>
+
+targets:
+  crystal:
+    main: src/crystal.cr
+
+crystal: 1.3.2
+
+license: MIT
+
+dependencies:
+  kemal:
+    github: kemalcr/kemal

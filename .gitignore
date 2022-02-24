@@ -1,5 +1,7 @@
 /docs/
 /lib/
 /bin/
+/starter/crystal/lib
+/starter/crystal/shard.lock
 /.shards/
 *.dwarf
