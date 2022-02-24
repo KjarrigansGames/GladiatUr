@@ -9,8 +9,8 @@ module GladiatUr
   end
 
   enum Color
-    White
     Black
+    White
   end
 
   # Core Rules:
@@ -28,14 +28,16 @@ module GladiatUr
     property id : String
     property current_turn : Int8
     property players = { Color::White => nil, Color::Black => nil}
+    property white_token = [] of Int32
+    property black_token = [] of Int32
 
     def initialize(@id)
       @current_turn = 0
-      @players = {}
+      @players = {} of Color => Player
     end
 
     def add_player(player : Player)
-      raise AlreadyFull if @players[Color::White] && @players[Color::Black]
+      raise AlreadyFull.new(self.to_s) if @players[Color::White] && @players[Color::Black]
       player.alive!
 
       if @player_white
@@ -47,24 +49,33 @@ module GladiatUr
       end
     end
 
+    SPAWN_FIELD = 0
+    TARGET_FIELD = 15
+    REROLL_FIELDS = [4,8,14]
+    FIGHT_FIELDS = [5,6,7,9,10,11,12]
     def start
-      until white_score == 7 || black_score == 7
-        current_turn += 1
-        movement = Random.rand(5)
-        active_player.make_turn(self, activ)
+      current_color = Color.get(Random.rand(2))
 
+      until white_score == 7 || black_score == 7
+        @current_turn += 1
+        movement = Random.rand(5)
+        @players[current_color].make_turn(self, current_color)
       end
     end
 
     def to_h
       {
-        id: id,
+        game: { id: id },
         board: {
           white: [1,2,3],
           black: [1,2,3]
         },
-        movable: [1]
+        moveable: [1]
       }
+    end
+
+    def to_s
+      "Game<#{id}>"
     end
   end
 
@@ -83,6 +94,7 @@ module GladiatUr
     class Error < Error; end
     class NotResponding < Error; end
     class Refused < Error; end
+    class FailedRequest < Error; end
 
     property name : String
     property url : String
@@ -90,12 +102,9 @@ module GladiatUr
 
     def initialize(@name, @url, @token)
       @uri = URI.parse(@url)
-      @client = HTTP::Client.new(@uri)
       @headers = HTTP::Headers{"Content-Type" => "application/json", "Accept" => "application/json",
                                "Authorization" => "Bearer #{@token}"}
-    end
-
-    def headers
+      @client = HTTP::Client.new(@uri)
     end
 
     def alive?
@@ -106,17 +115,18 @@ module GladiatUr
       raise NotResponding, self.to_s unless alive?
     end
 
+    struct JoinGameResponse
+      include JSON::Serializable
+
+      property accept : Bool
+    end
+
     # Send:
     # {
     #   "game": {
     #     "id": "64c8b0f0-aa36-459d-a997-cc9e818d7b8e"
     #   },
     #   "color": "white"
-    # }
-    #
-    # Receive:
-    # {
-    #   "accept": true|false
     # }
     def join_game(game : Game, color : Color)
       message = JSON.build do |json|
@@ -131,11 +141,18 @@ module GladiatUr
       end
 
       resp = @client.post(@uri.path + "/new", body: message, headers: @headers)
-      if resp.success?
-        if JSON.parse()
-      else
-        raise NotResponding, self.to_s
-      end
+
+      raise FailedRequest.new(self.to_s) unless resp.success?
+      return true if JoinGameResponse.from_json(resp.body).accept
+
+      raise Refused.new(self.to_s)
+    rescue
+    end
+
+    struct MakeTurnResponse
+      include JSON::Serializable
+
+      property move : Int8
     end
 
     # Send:
@@ -150,15 +167,13 @@ module GladiatUr
     #   },
     #   "moveable": [2,5]
     # }
-    #
-    # Receive:
-    # {
-    #   "move": 2
-    # }
     def make_turn(game : Game, color : Color)
       message = game.to_h.merge(color: color)
 
-      # @client.put(@uri.path + "/move", body: message.to_json, headers: @headers).success?
+      resp = @client.put(@uri.path + "/move", body: message.to_json, headers: @headers)
+      raise FailedRequest.new(self.to_s) unless resp.success?
+
+      return MakeTurnResponse.from_json(resp.body).move
     end
 
     def leave_game(game : Game)
@@ -172,7 +187,8 @@ module GladiatUr
 end
 
 game = GladiatUr::Game.new "1"
-pl = GladiatUr::Player.new(name: "Kjarrigan", url: "http://localhost:4567/api/v1", token: "secret")
+pl = GladiatUr::Player.new(name: "Kjarrigan", url: "http://localhost:3000", token: "secret")
 p pl.alive?
 p pl.join_game(game, color: GladiatUr::Color::White)
 p pl.make_turn(game, color: GladiatUr::Color::White)
+# p pl.make_turn(game, color: GladiatUr::Color::White)
