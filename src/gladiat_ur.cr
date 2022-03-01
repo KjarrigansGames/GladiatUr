@@ -1,11 +1,22 @@
 require "http/client"
 require "json"
+require "uuid"
+require "file_utils"
 
 # AI-Arena playing the Royal Game of Ur against each other
 module GladiatUr
   VERSION = "0.1.0"
 
   class Error < Exception
+  end
+
+  # Webservice providing endpoints to manage games
+  class API
+    # Create a new game
+    # Change game-settings
+    # Run game
+    # Abort?
+    # Get game results (persistent archive?)
   end
 
   enum Color
@@ -36,10 +47,13 @@ module GladiatUr
     property score = Hash(Color, Int8).new(0i8)
     property turn_log : Array(String)
 
-    def initialize(@id)
-      @current_turn = 0
+    def initialize(@id = UUID.random.hexstring)
       @board = { Color::Black => Array(Int8).new, Color::White => Array(Int8).new }
+
+      # Statistical knowledge
+      @current_turn = 0
       @turn_log = [] of String
+      @dice_rolls =  Hash(Int32, Int32).new(0)
     end
 
     def add_player(player : Player)
@@ -51,42 +65,54 @@ module GladiatUr
       @players[color] = player
     end
 
-    SPAWN_FIELD = 0
-    TARGET_FIELD = 15
-    REROLL_FIELDS = [4,8,14]
-    FIGHT_FIELDS = [5,6,7,9,10,11,12]
+    METADATA_ARCHIVE_PATH = "./archive"
+
+    NUMBER_OF_TOKENS = 7 # may become a game attribute later, e.g. for special game modes
+
+    SPAWN_FIELD = 0i8
+    TARGET_FIELD = 15i8
+    REROLL_FIELDS = [4i8,8i8,14i8]
+    SAFE_ZONE = 8i8
+    FIGHT_FIELDS = [5i8,6i8,7i8,9i8,10i8,11i8,12i8]
     def start
       raise NotEnoughPlayer.new if @players[Color::White].nil? || @players[Color::Black].nil?
 
       current_color = Color.new(Random.rand(2))
+      loop do
+        return end_game(reason: :black_won, winner: Color::Black) if score[Color::Black] == NUMBER_OF_TOKENS
+        return end_game(reason: :white_won, winner: Color::White) if score[Color::White] == NUMBER_OF_TOKENS
 
-#       until score[Color::White] == 7 || score[Color::Black] == 7
-      10.times do
         @current_turn += 1
         current_player = @players[current_color].not_nil!
-        puts "Turn #{@current_turn} | #{current_color} | #{current_player.name}"
 
-        movement = Random.rand(5)
-        puts "Dice-Roll: #{movement}"
+        movement = 4.times.sum { Random.rand(2) }
+        @dice_rolls[movement] += 1
 
-        valid_moves = [1i8]
-        selected_token = current_player.make_turn(game: self, color: current_color, valid_moves: valid_moves)
-        puts "AIs Choise: #{selected_token}"
-        return end_game(reason: :invalid_move) unless valid_moves.includes?(selected_token)
+        valid_moves = calculate_valid_moves(movement, current_color)
+
+        if valid_moves.empty?
+          append_turn_to_log(current_color)
+          current_color = opponent(current_color)
+
+          next
+        end
+
+        selected_token = current_player.make_turn(game: self, color: current_color, dice_roll: movement, valid_moves: valid_moves)
+        return end_game(reason: :invalid_move, winner: opponent(current_color)) unless valid_moves.includes?(selected_token)
 
         new_field = selected_token + movement
         board[current_color].delete(selected_token)
 
-        case new_field
-        when TARGET_FIELD
+        case
+        when new_field == TARGET_FIELD
           score[current_color] += 1
           append_turn_to_log(current_color, selected_token, new_field, score: true)
 
           current_color = opponent(current_color)
-        when REROLL_FIELDS
+        when REROLL_FIELDS.includes?(new_field)
           board[current_color] << new_field
           append_turn_to_log(current_color, selected_token, new_field, reroll: true)
-        when FIGHT_FIELDS
+        when FIGHT_FIELDS.includes?(new_field)
           empty = board[opponent(current_color)].delete(new_field).nil?
           board[current_color] << new_field
           append_turn_to_log(current_color, selected_token, new_field, fight: !empty)
@@ -99,8 +125,27 @@ module GladiatUr
           current_color = opponent(current_color)
         end
       end
+    ensure
+      save_metadata
+    end
 
-      puts turn_log.join("\n")
+    def calculate_valid_moves(movement, color : Color)
+      valid_moves = @board[color].map do |token_position|
+        new_pos = token_position + movement
+        next if @board[color].includes?(new_pos) # already occupied by yourself
+        next if new_pos > TARGET_FIELD # only exact movement scores
+        next if new_pos == SAFE_ZONE && @board[opponent(color)].includes?(SAFE_ZONE) # safe zone is blocked
+
+        token_position
+      end.compact
+
+      # if you have tokens left AND the position is not blocked allow adding a new token
+      if !@board[color].includes?(SPAWN_FIELD + movement) &&
+         @board[color].size + @score[color] < NUMBER_OF_TOKENS
+        valid_moves << SPAWN_FIELD
+      end
+
+      valid_moves.sort
     end
 
     # Chess-like notation
@@ -108,7 +153,8 @@ module GladiatUr
     # Bx2-4 -> Black moved from 2 to 4 and removed a white token
     # W13-15+ -> White moved from 13 to 15 and got a point
     # B4-8R -> Black moved from 4 to 8 and got a reroll
-    def append_turn_to_log(color : Color, current : Int8, target : Int8, fight=false, reroll=false, score=false)
+    # B- -> Black can't move
+    def append_turn_to_log(color : Color, current : Int8|Nil=nil, target : Int8|Nil=nil, fight=false, reroll=false, score=false)
       @turn_log << [
                      color.to_s[0],
                      fight ? 'x' : nil,
@@ -116,7 +162,7 @@ module GladiatUr
                      '-',
                      target,
                      reroll ? 'R' : nil,
-                     score ? 'x' : nil
+                     score ? '+' : nil
                    ].compact.join
     end
 
@@ -124,16 +170,40 @@ module GladiatUr
       color == Color::White ? Color::Black : Color::White
     end
 
-    def end_game(reason)
+    def end_game(reason, winner : Color)
+      @turn_log << (winner == Color::Black ? "0-1" : "1-0")
+
       @players.each do |color, player|
         next if player.nil?
 
-        player.leave_game(self, color)
+        player.leave_game(self, color, winner: winner)
       end
     end
 
     def to_s
       "Game<#{id}>"
+    end
+
+    def save_metadata
+      FileUtils.mkdir_p METADATA_ARCHIVE_PATH
+
+      meta_data = {
+        game_id: @id,
+        players: {
+          Color::Black.to_s.underscore => @players[Color::Black],
+          Color::White.to_s.underscore => @players[Color::White]
+        },
+        score: {
+          Color::Black.to_s.underscore => @score[Color::Black],
+          Color::White.to_s.underscore => @score[Color::White]
+        },
+        turns: @current_turn,
+        log: @turn_log,
+        dice_rolls: @dice_rolls
+      }
+
+      File.write(File.join("archive", @id + ".json"), meta_data.to_json)
+      puts turn_log.join("\n")
     end
   end
 
@@ -163,6 +233,13 @@ module GladiatUr
       @headers = HTTP::Headers{"Content-Type" => "application/json", "Accept" => "application/json",
                                "Authorization" => "Bearer #{@token}"}
       @client = HTTP::Client.new(@uri)
+    end
+
+    def to_json(json)
+      json.object do
+        json.field "name", @name
+        json.field "url", @url
+      end
     end
 
     def alive?
@@ -225,7 +302,7 @@ module GladiatUr
     #   },
     #   "moveable": [2,5]
     # }
-    def make_turn(game : Game, color : Color, valid_moves : Array(Int8))
+    def make_turn(game : Game, color : Color, dice_roll : Int32, valid_moves : Array(Int8))
       message = {
         game: { id: game.id },
         color: color,
@@ -233,9 +310,9 @@ module GladiatUr
           Color::Black.to_s.underscore => game.board[Color::Black],
           Color::White.to_s.underscore => game.board[Color::White]
         },
+        dice_roll: dice_roll,
         moveable: valid_moves
       }.to_json
-      puts message
 
       resp = @client.put(@uri.path + "/move", body: message, headers: @headers)
       raise FailedRequest.new(self.to_s) unless resp.success?
@@ -243,17 +320,20 @@ module GladiatUr
       return MakeTurnResponse.from_json(resp.body).move
     end
 
-    def leave_game(game : Game, color)
-      message = JSON.build do |json|
-        json.object do
-          json.field "game" do
-            json.object do
-              json.field "id", game.id
-            end
-          end
-          json.field "color", color
-        end
-      end
+    # Send
+    # {
+    #   "game": {
+    #     "id": "64c8b0f0-aa36-459d-a997-cc9e818d7b8e"
+    #   },
+    #   "color": "white",
+    #   "winner": "white"
+    # }
+    def leave_game(game : Game, color : Color, winner : Color|Nil)
+      message = {
+        game: { id: game.id },
+        color: color,
+        winner: winner,
+      }.to_json
 
       @client.delete(@uri.path + "/end", body: message, headers: @headers).success?
     end
@@ -264,7 +344,7 @@ module GladiatUr
   end
 end
 
-game = GladiatUr::Game.new "1"
-game.add_player GladiatUr::Player.new(name: "Kjarrigan", url: "http://localhost:3000", token: "secret")
-game.add_player GladiatUr::Player.new(name: "Lies", url: "http://localhost:3000", token: "secret")
+game = GladiatUr::Game.new
+game.add_player GladiatUr::Player.new(name: "White", url: ARGV[0]? || "http://localhost:3000", token: "secret")
+game.add_player GladiatUr::Player.new(name: "Black", url: ARGV[1]? || "http://localhost:3000", token: "secret")
 game.start

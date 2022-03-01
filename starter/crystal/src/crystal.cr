@@ -34,6 +34,7 @@ end
 #     "white": [1,2,5,8],
 #     "black": [1,2,3]
 #   },
+#   "dice_roll": 3
 #   "moveable": [2,5]
 # }
 struct TurnRequest
@@ -62,7 +63,7 @@ end
 put "/move" do |env|
   req = TurnRequest.from_json env.request.body.not_nil!
 
-  { move: 1 }.to_json
+  { move: req.moveable.last }.to_json
 end
 
 delete "/end" do
