@@ -22,11 +22,11 @@ type Game struct {
 }
 
 type StartResponse struct {
-	Accept bool
+	Accept bool `json:"accept"`
 }
 
 type MoveResponse struct {
-	Move int
+	Move int `json:"move"`
 }
 
 func pingHandler(w http.ResponseWriter, _ *http.Request) {
