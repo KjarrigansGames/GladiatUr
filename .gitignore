@@ -1,7 +1,9 @@
+/archive
 /docs/
 /lib/
 /bin/
 /starter/crystal/lib
-/starter/crystal/shard.lock
+shard.lock
 /.shards/
 *.dwarf
+gladiat_ur
