@@ -14,13 +14,25 @@ def handle_start():
     data = request.get_json()
     game_id = data["game"]["id"]
     logging.info(f"started new game {game_id}")
-    return make_response("", 200)
+
+    # Whenever the game server sends a game invitation, it is up to you
+    # whether you would like to join or decline. The starter will always
+    # accept any new game.
+    response = {"accept": True}
+
+    return make_response(response, 201)
 
 
 @app.route("/move", methods=["PUT"])
 def handle_move():
     data = request.get_json()
-    return make_response(data["moveable"][0], 200)
+
+	# This is the place where you should implement your strategy to defeat your
+	# opponents. For simplicity the starter will only return the first possible
+	# move.
+    response = {"move": data["moveable"][0]}
+
+    return make_response(response, 200)
 
 
 @app.route("/end", methods=["DELETE"])
