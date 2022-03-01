@@ -10,14 +10,23 @@ import (
 
 type Data struct {
 	Game     Game             `json:"game"`
-	Winner   bool             `json:"winner"`
+	Winner   string           `json:"winner"`
 	Color    string           `json:"color"`
 	Board    map[string][]int `json:"board"`
 	Moveable []int            `json:"moveable"`
+	DiceRoll int              `json:"dice_roll"`
 }
 
 type Game struct {
 	ID string `json:"id"`
+}
+
+type StartResponse struct {
+	Accept bool
+}
+
+type MoveResponse struct {
+	Move int
 }
 
 func pingHandler(w http.ResponseWriter, _ *http.Request) {
@@ -27,58 +36,76 @@ func pingHandler(w http.ResponseWriter, _ *http.Request) {
 func startHandler(w http.ResponseWriter, r *http.Request) {
 	var data Data
 	if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
-		err = fmt.Errorf("ERROR: failed to decode data json, %w", err)
-		log.Printf(err.Error())
+		log.Printf("ERROR: failed to decode data json: %s", err)
 		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(err.Error()))
 		return
 	}
 
 	log.Printf("INFO: started new game %s", data.Game.ID)
 
+	var response StartResponse
+	/*
+		Whenever the game server sends a game invitation, it is up to you
+		whether you would like to join or decline. The starter will always
+		accept any new game.
+	*/
+	response.Accept = true
+
+	responseBytes, err := json.Marshal(response)
+	if err != nil {
+		log.Printf("ERROR: failed to encode start response: %s", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	w.Write(responseBytes)
+}
+
+func moveHandler(w http.ResponseWriter, r *http.Request) {
+	var data Data
+	if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
+		log.Printf("ERROR: failed to decode data json: %s", err)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	var response MoveResponse
+	/*
+		This is the place where you should implement your strategy to defeat your
+		opponents. For simplicity the starter will only return the first possible
+		move.
+	*/
+	response.Move = data.Moveable[0]
+
+	responseBytes, err := json.Marshal(response)
+	if err != nil {
+		log.Printf("ERROR: failed to encode move response: %s", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
+	w.Write(responseBytes)
 }
 
 func endHandler(w http.ResponseWriter, r *http.Request) {
 	var data Data
 	if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
-		err = fmt.Errorf("ERROR: failed to decode data json, %w", err)
-		log.Printf(err.Error())
+		log.Printf("ERROR: failed to decode data json: %s", err)
 		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(err.Error()))
 		return
 	}
 
-	if data.Winner {
+	if data.Color == data.Winner {
 		log.Printf("INFO: won game %s", data.Game.ID)
 	} else {
 		log.Printf("INFO: lost game %s", data.Game.ID)
 	}
 
 	w.WriteHeader(http.StatusOK)
-}
-
-func moveHandler(w http.ResponseWriter, r *http.Request) {
-	var data Data
-	if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
-		err = fmt.Errorf("ERROR: failed to decode data json, %w", err)
-		log.Printf(err.Error())
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(err.Error()))
-		return
-	}
-
-	var response map[string]int
-	response["move"] = data.Moveable[0]
-
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(response); err != nil {
-		err = fmt.Errorf("ERROR: failed to encode move response, %w", err)
-		log.Printf(err.Error())
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(err.Error()))
-		return
-	}
 }
 
 func methodCheck(method string, next http.HandlerFunc) http.HandlerFunc {
