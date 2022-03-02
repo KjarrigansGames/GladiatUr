@@ -1,8 +1,9 @@
-# GladiatUr
+![GladiatUr](./logo.png)
 
-An AI-Competition in the spirit of BattleSnake but playing the Royal Game of Ur against each other.
+An AI-Competition in the spirit of [BattleSnake](https://github.com/battlesnakeofficial) but playing the [Royal Game of Ur](https://en.wikipedia.org/wiki/Royal_Game_of_Ur) 
+against each other. 
 So far the game works with basic-rules. There is a game-server available at http://gladiat-ur.kjarrigan.de
-if you want to jumpstart developing an AI with one of the starter kits. Otherwise check the `Usage`
+if you want to jumpstart developing an AI with one of the starter kits. Otherwise check the [Self-Hosted GameServer](#self-hosted-gameserver)
 section below on how to operate your personal setup.
 
 ---
