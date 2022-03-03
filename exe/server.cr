@@ -28,6 +28,10 @@ struct Player
     nil
   end
 
+  def self.list
+    Dir[File.join(SAVE_PATH, "*.json")].map { |filename| File.basename(filename, ".json") }
+  end
+
   def save
     FileUtils.mkdir_p SAVE_PATH
 
@@ -96,6 +100,10 @@ delete "/players" do |env|
   else
     halt(env, status_code: 201)
   end
+end
+
+get "/players" do |env|
+  { players: Player.list }.to_json
 end
 
 Kemal.run
