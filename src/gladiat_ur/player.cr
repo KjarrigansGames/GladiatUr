@@ -51,23 +51,32 @@ module GladiatUr
     # Send:
     # {
     #   "game": {
-    #     "id": "64c8b0f0-aa36-459d-a997-cc9e818d7b8e"
+    #     "id": "64c8b0f0-aa36-459d-a997-cc9e818d7b8e",
+    #     "ruleset": {
+    #       "name": "standard",
+    #       "tokens_per_player": 7,
+    #       "score_to_win": 7
+    #       "special_fields": {
+    #         "target": 15
+    #         "reroll": [4,8,14],
+    #         "safe_zones": [1,2,3,4,8,13,14],
+    #       },
+    #     },
+    #     "turn_timeout_ms": 500
     #   },
     #   "color": "white"
     # }
-    def join_game(game : Game, color : Color)
-      message = JSON.build do |json|
-        json.object do
-          json.field "game" do
-            json.object do
-              json.field "id", game.id
-            end
-          end
-          json.field "color", color
-        end
-      end
+    def join_game(game : Game, color : Color, turn_timeout : Int32 = 500)
+      message = {
+        game: {
+          id: game.id,
+          ruleset: game.rule_set.to_h,
+        },
+        turn_timeout_ms: turn_timeout,
+        color: color
+      }.to_json
 
-      resp = @client.post(@uri.path + "/new", body: message, headers: @headers)
+      resp = @client.post(@uri.path + "/start", body: message, headers: @headers)
 
       raise FailedRequest.new(self.to_s) unless resp.success?
       return true if JoinGameResponse.from_json(resp.body).accept
@@ -93,6 +102,10 @@ module GladiatUr
     #     "white": [1,2,5,8],
     #     "black": [1,2,3]
     #   },
+    #   "score": {
+    #     "white": 3,
+    #     "black": 4
+    #   },
     #   "dice_roll": 3
     #   "moveable": [2,5]
     # }
@@ -103,6 +116,10 @@ module GladiatUr
         board: {
           Color::Black.to_s.underscore => game.board[Color::Black],
           Color::White.to_s.underscore => game.board[Color::White]
+        },
+        score: {
+          Color::Black.to_s.underscore => game.score[Color::Black],
+          Color::White.to_s.underscore => game.score[Color::White]
         },
         dice_roll: dice_roll,
         moveable: valid_moves
