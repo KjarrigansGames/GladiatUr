@@ -67,7 +67,15 @@ post "/game" do |env|
     game.add_player GladiatUr::Player.new(name: player.name, url: player.url, token: player.token)
   end
   meta = game.start
-  { game: { id: game.id }, winner: meta[:winner] }.to_json
+
+  winner = meta[:players][meta[:winner].to_s.underscore]
+  if winner
+    winner = winner.name
+  else
+    meta[:winner]
+  end
+
+  { game: { id: game.id }, winner: winner }.to_json
 rescue err : GladiatUr::Error
   { error: "#{err.class.to_s} #{err.to_s}".strip  }.to_json
 end
