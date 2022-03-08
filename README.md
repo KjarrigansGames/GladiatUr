@@ -33,7 +33,7 @@ Your AI has to provide a webserver responding to the following endpoints
 
 A basic check if your AI is still responsive.
 
-#### POST /new
+#### POST /start
 
 A new game is triggered and you receive a game-UUID to setup your AI. Reply with `{"accept":"true"}`
 if you want to run (another) game. Multiple games are possible in parallel each identified by the

@@ -5,7 +5,7 @@ module GladiatUr
   # Wrapper to connect to the Client-AI
   # - client.url/ping - are you still alive?, no response necessary
   # - client.url/start - start a new game with a session_id, no response necessary
-  # - client.url/move - send current board_state and , respond with token-id (to move)
+  # - client.url/turn - send current board_state and , respond with token-id (to move)
   # - client.url/end - send result (winner, win_reason)
   struct Player
     class Error < Error; end
@@ -125,7 +125,7 @@ module GladiatUr
         moveable: valid_moves
       }.to_json
 
-      resp = @client.put(@uri.path + "/move", body: message, headers: @headers)
+      resp = @client.put(@uri.path + "/turn", body: message, headers: @headers)
       raise FailedRequest.new(self.to_s) unless resp.success?
 
       return MakeTurnResponse.from_json(resp.body).move
