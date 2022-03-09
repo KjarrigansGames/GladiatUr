@@ -14,6 +14,7 @@ module GladiatUr
   end
 end
 require "./gladiat_ur/player"
+require "./gladiat_ur/rule_set"
 require "./gladiat_ur/game"
 
 # game = GladiatUr::Game.new

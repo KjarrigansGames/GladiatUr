@@ -18,7 +18,6 @@ struct Player
   property url : String
   property token : String
 
-
   SAVE_PATH = "./players"
   def self.load(name)
     File.open(File.join(SAVE_PATH, name + ".json")) do |json|

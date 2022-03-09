@@ -2,7 +2,6 @@ require "uuid"
 require "file_utils"
 
 module GladiatUr
-
   # Core Rules:
   # - 2 Players
   # - 7 Token per Player
@@ -24,10 +23,14 @@ module GladiatUr
     property players = Hash(Color, Player | Nil).new
     property board : Hash(Color, Array(Int8))
     property score = Hash(Color, Int8).new(0i8)
+    property rule_set : RuleSet
     property turn_log : Array(String)
 
-    def initialize(@id = UUID.random.hexstring)
+
+    def initialize(@id = UUID.random.hexstring, rule_set : String|RuleSet = "standard")
       @board = { Color::Black => Array(Int8).new, Color::White => Array(Int8).new }
+      @rule_set = rule_set.is_a?(String) ? RULES[rule_set] : rule_set
+      raise ArgumentError.new("Invalid Ruleset") if @rule_set.nil?
 
       # Statistical knowledge
       @current_turn = 0
@@ -46,20 +49,14 @@ module GladiatUr
 
     METADATA_ARCHIVE_PATH = "./archive"
 
-    NUMBER_OF_TOKENS = 7 # may become a game attribute later, e.g. for special game modes
-
     SPAWN_FIELD = 0i8
-    TARGET_FIELD = 15i8
-    REROLL_FIELDS = [4i8,8i8,14i8]
-    SAFE_ZONE = 8i8
-    FIGHT_FIELDS = [5i8,6i8,7i8,9i8,10i8,11i8,12i8]
     def start
       raise NotEnoughPlayers.new if @players[Color::White]?.nil? || @players[Color::Black]?.nil?
 
       current_color = Color.new(Random.rand(2))
       loop do
-        break end_game(reason: :black_won, winner: Color::Black) if score[Color::Black] == NUMBER_OF_TOKENS
-        break end_game(reason: :white_won, winner: Color::White) if score[Color::White] == NUMBER_OF_TOKENS
+        break end_game(reason: :black_won, winner: Color::Black) if score[Color::Black] == @rule_set.tokens_per_player
+        break end_game(reason: :white_won, winner: Color::White) if score[Color::White] == @rule_set.tokens_per_player
 
         @current_turn += 1
         current_player = @players[current_color].not_nil!
@@ -83,15 +80,15 @@ module GladiatUr
         board[current_color].delete(selected_token)
 
         case
-        when new_field == TARGET_FIELD
+        when new_field == @rule_set.target_field
           score[current_color] += 1
           append_turn_to_log(current_color, selected_token, new_field, score: true)
 
           current_color = opponent(current_color)
-        when REROLL_FIELDS.includes?(new_field)
+        when @rule_set.reroll_fields.includes?(new_field)
           board[current_color] << new_field
           append_turn_to_log(current_color, selected_token, new_field, reroll: true)
-        when FIGHT_FIELDS.includes?(new_field)
+        when @rule_set.combat_fields.includes?(new_field)
           empty = board[opponent(current_color)].delete(new_field).nil?
           board[current_color] << new_field
           append_turn_to_log(current_color, selected_token, new_field, fight: !empty)
@@ -112,15 +109,15 @@ module GladiatUr
       valid_moves = @board[color].map do |token_position|
         new_pos = token_position + movement
         next if @board[color].includes?(new_pos) # already occupied by yourself
-        next if new_pos > TARGET_FIELD # only exact movement scores
-        next if new_pos == SAFE_ZONE && @board[opponent(color)].includes?(SAFE_ZONE) # safe zone is blocked
+        next if new_pos > @rule_set.target_field # only exact movement scores
+        next if @rule_set.safe_zone_fields.includes?(new_pos) && @board[opponent(color)].includes?(new_pos)
 
         token_position
       end.compact
 
       # if you have tokens left AND the position is not blocked allow adding a new token
       if !@board[color].includes?(SPAWN_FIELD + movement) &&
-         @board[color].size + @score[color] < NUMBER_OF_TOKENS
+         @board[color].size + @score[color] < @rule_set.tokens_per_player
         valid_moves << SPAWN_FIELD
       end
 
