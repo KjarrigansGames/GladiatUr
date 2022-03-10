@@ -23,7 +23,7 @@ def handle_start():
     return make_response(response, 201)
 
 
-@app.route("/move", methods=["PUT"])
+@app.route("/turn", methods=["PUT"])
 def handle_move():
     data = request.get_json()
 
@@ -39,7 +39,7 @@ def handle_move():
 def handle_end():
     data = request.get_json()
     game_id = data["game"]["id"]
-    if data["winner"]:
+    if data["color"] == data["winner"]:
         logging.info(f"won game {game_id}")
     else:
         logging.info(f"lost game {game_id}")

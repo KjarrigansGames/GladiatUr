@@ -10,15 +10,31 @@ import (
 
 type Data struct {
 	Game     Game             `json:"game"`
-	Winner   string           `json:"winner"`
 	Color    string           `json:"color"`
 	Board    map[string][]int `json:"board"`
-	Moveable []int            `json:"moveable"`
+	Score    map[string]int   `json:"score"`
 	DiceRoll int              `json:"dice_roll"`
+	Moveable []int            `json:"moveable"`
+	Winner   string           `json:"winner"`
 }
 
 type Game struct {
-	ID string `json:"id"`
+	ID      string      `json:"id"`
+	RuleSet GameRuleSet `json:"ruleset"`
+}
+
+type GameRuleSet struct {
+	Name            string           `json:"name"`
+	TokensPerPlayer int              `json:"tokens_per_player"`
+	ScoreToWin      int              `json:"score_to_win"`
+	SpecialFields   SpecialFieldsMap `json:"special_fields"`
+	TurnTimeoutMs   int              `json:"turn_timeout_ms"`
+}
+
+type SpecialFieldsMap struct {
+	Target int   `json:"target"`
+	Reroll []int `json:"reroll"`
+	Save   []int `json:"save"`
 }
 
 type StartResponse struct {
@@ -63,7 +79,7 @@ func startHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(responseBytes)
 }
 
-func moveHandler(w http.ResponseWriter, r *http.Request) {
+func turnHandler(w http.ResponseWriter, r *http.Request) {
 	var data Data
 	if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
 		log.Printf("ERROR: failed to decode data json: %s", err)
@@ -121,7 +137,7 @@ func methodCheck(method string, next http.HandlerFunc) http.HandlerFunc {
 func main() {
 	http.HandleFunc("/ping", methodCheck(http.MethodHead, pingHandler))
 	http.HandleFunc("/start", methodCheck(http.MethodPost, startHandler))
-	http.HandleFunc("/move", methodCheck(http.MethodPut, moveHandler))
+	http.HandleFunc("/turn", methodCheck(http.MethodPut, turnHandler))
 	http.HandleFunc("/end", methodCheck(http.MethodDelete, endHandler))
 
 	addr, port := "127.0.0.1", "8080"
