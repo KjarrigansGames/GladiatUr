@@ -106,6 +106,8 @@ module GladiatUr
     end
 
     def calculate_valid_moves(movement, color : Color)
+      return [] of Int8 if movement == 0
+  
       valid_moves = @board[color].map do |token_position|
         new_pos = token_position + movement
         next if @board[color].includes?(new_pos) # already occupied by yourself
