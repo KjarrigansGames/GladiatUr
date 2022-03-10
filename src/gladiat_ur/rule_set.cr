@@ -12,7 +12,7 @@ module GladiatUr
     property safe_zone_fields : Array(Int8) = START_AREA + [8i8] + TARGET_AREA
 
     def combat_fields
-      (1i8..@target_field).to_a - safe_zone_fields
+      (1i8..@target_field - 1).to_a - safe_zone_fields
     end
 
     def to_h
