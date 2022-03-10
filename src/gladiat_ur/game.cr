@@ -49,7 +49,6 @@ module GladiatUr
 
     METADATA_ARCHIVE_PATH = "./archive"
 
-    SPAWN_FIELD = 0i8
     def start
       raise NotEnoughPlayers.new if @players[Color::White]?.nil? || @players[Color::Black]?.nil?
 
@@ -112,6 +111,10 @@ module GladiatUr
         new_pos = token_position + movement
         next if @board[color].includes?(new_pos) # already occupied by yourself
         next if new_pos > @rule_set.target_field # only exact movement scores
+
+        next token_position if START_AREA.includes?(new_pos)
+        next token_position if TARGET_AREA.includes?(new_pos)
+
         next if @rule_set.safe_zone_fields.includes?(new_pos) && @board[opponent(color)].includes?(new_pos)
 
         token_position
