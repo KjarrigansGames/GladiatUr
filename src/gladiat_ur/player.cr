@@ -7,7 +7,7 @@ module GladiatUr
   # - client.url/start - start a new game with a session_id, no response necessary
   # - client.url/turn - send current board_state and , respond with token-id (to move)
   # - client.url/end - send result (winner, win_reason)
-  struct Player
+  class Player
     class Error < Error; end
     class NotResponding < Error; end
     class Refused < Error; end
@@ -19,12 +19,17 @@ module GladiatUr
     property name : String
     property url : String
     property token : String
+    property uri : URI
+    property headers : HTTP::Headers
 
     def initialize(@name, @url, @token)
       @uri = URI.parse(@url)
       @headers = HTTP::Headers{"Content-Type" => "application/json", "Accept" => "application/json",
                                "Authorization" => "Bearer #{@token}"}
-      @client = HTTP::Client.new(@uri)
+    end
+
+    def client
+      @client ||= HTTP::Client.new(@uri)
     end
 
     def to_json(json)
@@ -35,7 +40,7 @@ module GladiatUr
     end
 
     def alive?
-      @client.head(@uri.path + "/ping").success?
+      client.head(@uri.path + "/ping").success?
     end
 
     def alive!
@@ -76,7 +81,7 @@ module GladiatUr
         color: color
       }.to_json
 
-      resp = @client.post(@uri.path + "/start", body: message, headers: @headers)
+      resp = client.post(@uri.path + "/start", body: message, headers: @headers)
 
       raise FailedRequest.new(self.to_s) unless resp.success?
       return true if JoinGameResponse.from_json(resp.body).accept
@@ -125,7 +130,7 @@ module GladiatUr
         moveable: valid_moves
       }.to_json
 
-      resp = @client.put(@uri.path + "/turn", body: message, headers: @headers)
+      resp = client.put(@uri.path + "/turn", body: message, headers: @headers)
       raise FailedRequest.new(self.to_s) unless resp.success?
 
       return MakeTurnResponse.from_json(resp.body).move
@@ -148,12 +153,28 @@ module GladiatUr
         winner: winner,
       }.to_json
 
-      @client.delete(@uri.path + "/end", body: message, headers: @headers).success?
+      client.delete(@uri.path + "/end", body: message, headers: @headers).success?
     rescue
     end
 
     def to_s
       "Player<#{@name}|#{@url}>"
+    end
+
+    # A dummy class for testing
+    class Dummy < self
+      property turn : Proc(Array(Int8), Int8)
+      def initialize(name, turn = nil)
+        @turn = turn || ->(valid_moves : Array(Int8)) { valid_moves.first }
+        super(name, "http://nope", "secret")
+      end
+
+      def alive?; true; end
+      def join_game(*_args); true; end
+      def leave_game(*_args); true; end
+      def make_turn(valid_moves : Array(Int8), **_args)
+        @turn.call(valid_moves)
+      end
     end
   end
 end
