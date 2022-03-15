@@ -15,6 +15,7 @@ module GladiatUr
   TARGET_AREA = [13i8, 14i8]
 
   struct RuleSet
+    property name = "standard"
     property tokens_per_player : Int8 = 7i8
     property score_to_win : Int8 = 7i8
 
@@ -28,6 +29,7 @@ module GladiatUr
 
     def to_h
       {
+        name: name,
         tokens_per_player: tokens_per_player,
         score_to_win: score_to_win,
         special_fields: {

@@ -51,8 +51,8 @@ module GladiatUr
         game: {
           id: game.id,
           ruleset: game.rule_set.to_h,
+          turn_timeout_ms: turn_timeout,
         },
-        turn_timeout_ms: turn_timeout,
         color: color
       }.to_json
 
@@ -63,6 +63,7 @@ module GladiatUr
 
       raise Refused.new(self.to_s)
     rescue JSON::SerializableError
+    rescue JSON::ParseException
       raise FailedRequest.new(self.to_s)
     end
 
@@ -109,22 +110,6 @@ module GladiatUr
 
     def to_s
       "Player<#{@name}|#{@url}>"
-    end
-
-    # A dummy class for testing
-    class Dummy < self
-      property turn : Proc(Array(Int8), Int8)
-      def initialize(name, turn = nil)
-        @turn = turn || ->(valid_moves : Array(Int8)) { valid_moves.first }
-        super(name, "http://nope", "secret")
-      end
-
-      def alive?; true; end
-      def join_game(*_args); true; end
-      def leave_game(*_args); true; end
-      def make_turn(valid_moves : Array(Int8), **_args)
-        @turn.call(valid_moves)
-      end
     end
   end
 end
