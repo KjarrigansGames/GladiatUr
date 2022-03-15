@@ -2,17 +2,6 @@ require "uuid"
 require "file_utils"
 
 module GladiatUr
-  # Core Rules:
-  # - 2 Players
-  # - 7 Token per Player
-  # - Turn based
-  # - Movement determined by 4d2 (ranging from 0-4, 0 -> turn wasted)
-  # - First to bring 7 Stones Home wins
-  # - Home has to be reached with an exact movement
-  # - The board constinsts of 3 areas, a personal are per player and a shared zone were you can
-  #   actively interact with the opponent (kicking, blocking)
-  # - 5 Special fields that trigger another turn and prevent enemie actions
-  # - only one Token per field
   class Game
     class Error < Error; end
     class AlreadyFull < Error; end
