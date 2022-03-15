@@ -21,6 +21,7 @@ type Data struct {
 type Game struct {
 	ID      string      `json:"id"`
 	RuleSet GameRuleSet `json:"ruleset"`
+	TurnTimeoutMs   int `json:"turn_timeout_ms"`	
 }
 
 type GameRuleSet struct {
@@ -28,7 +29,6 @@ type GameRuleSet struct {
 	TokensPerPlayer int              `json:"tokens_per_player"`
 	ScoreToWin      int              `json:"score_to_win"`
 	SpecialFields   SpecialFieldsMap `json:"special_fields"`
-	TurnTimeoutMs   int              `json:"turn_timeout_ms"`
 }
 
 type SpecialFieldsMap struct {
