@@ -1,12 +1,14 @@
-name: gladiat_ur
+name: GladiatUr
 version: 0.1.0
+
+description: A Game-Server that allows to let AIs play against each other in the Royal Game of Ur.
 
 authors:
   - Holger Arndt <gladiat-ur@kjarrigan.de>
 
 targets:
   gladiat_ur:
-    main: src/gladiat_ur.cr
+    main: exe/server.cr
 
 crystal: 1.3.2
 

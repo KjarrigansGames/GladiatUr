@@ -27,55 +27,31 @@ You can particiapte with basically every language as long as it can handle json 
 
 ### Developing your own AI
 
-Your AI has to provide a webserver responding to the following endpoints
-
-#### HEAD /ping
-
-A basic check if your AI is still responsive.
-
-#### POST /start
-
-A new game is triggered and you receive a game-UUID to setup your AI. Reply with `{"accept":"true"}`
-if you want to run (another) game. Multiple games are possible in parallel each identified by the
-UUID. If you can't or don't want to run multiple games just return `{"accept":"false"}`
-
-`TODO Sample JSON`
-
-#### PUT /turn
-
-You'll reveive a lot of these every time it's (surprise) your turn. You'll reveive all the information
-you need, like how does the board currently look like (your and opponents position), the dice-roll and
-we even provide you with a list of valid moves. We want you to write a cool, challenging AI and not
-bother to master the game(rules) before you write your first working GladitUr.
-
-`TODO Sample JSON`
-
-#### DELETE /end
-
-Once the game is finished you'll receive a short information on who won. It's pretty scarce in terms
-of metrics but that is on purpose. As beginner you probably only want to know if you've won or lost
-BUT if you want the full-scale meta-data to analyse and optimize your AI then you can fetch extensive
-data from the server(archive) containing a Replay-Log (see below how to read it), scores and even
-dice-roll statistics.
-
-`TODO Sample JSON`
+Checkout the [Client-API](docs/CLIENT_API.md) on how to get started.
 
 ### Let your AI compete against someone else
 
-The GameServer connects to your AI via HTTP-Requests (not the other way around) so it has to be
-reachable via WWW (in self-hosted setups localhost or LAN might work as well). Once your AI is ready
-you can register a your AI and start playing.
+This part is Work-in-Progress. Eventually we want a nice Web-Platform to manage AIs, Games, Tournaments and a Ranking System. But
+you can alreay start and play right now.
 
 #### Register your AI
 
-`TODO`
+The GameServer connects to your AI via HTTP-Requests (not the other way around) so it has to be reachable via 
+WWW (in self-hosted setups localhost or LAN might work as well). You can register it like this
+
+```bash
+$ curl -XPOST gladiat-ur.kjarrigan.de/players -d '{"name":"MyAI","url":"http://example.com:8080","token":"TOKEN"}'
+```
+
+The token is no passwort for the server but actually the other way around. Whenever the server sends you a request it'll 
+add the token as HTTP-Header `Auth: Bearer TOKEN` so you can verify that the request is from the actual game server.
 
 #### Play a new Game
 
-`TODO`
+Again - this part is Work-in-Progress. For now you have to initiate the games yourself:
 
 ```bash
-$ curl -XPOST gladiat-ur.kjarrigan.de/game -d '{"players": [{"name":"MyAI", "url":"http://example.com:8080/foo","secret":"MYPASSWORD"},{"name":"MyAIAgain", "url":"http://example.com:8080/foo","secret":"MYPASSWORD"}]}'
+$ curl -XPOST gladiat-ur.kjarrigan.de/game -d '{"players": ['MyPreviouslyRegisteredAI', 'SomeoneElse']}'
 
 { "game": { "id": "12345" }, "winner": "white" }
 
@@ -112,19 +88,6 @@ Crystal.
 
 Is located in `src/` and also written in Crystal
 
-### AI-Starter-Kits
-
-`starters/` contain multiple directories each named after the language it's written in. It shall
-help diving directly into game AI development, in the language of your choice, withouth too much
-necessary knowledge about how everything works. Ideally it's a dependency free script with all
-necessary endpoints, data and usefull comments to get a newbie started. These starters are maintained
-by the  core-team:
-
-* Crystal (Holger)
-* Ruby (Holger)
-* Golang (Markus)
-* Python (Markus)
-
 ## FAQ
 
 ### How did you come up with the idea?
@@ -134,10 +97,10 @@ Part of that was to setup some (basic) AI you can play against. We figured, that
 rules are pretty simple, there is actually quite some room strategy. Since we have participated in
 BattleSnake a couple of times we came to the conclusion that it actually
 
-### It feels a lot like BattleSnake?
+### It feels a lot like BattleSnake!
 
 Not really a question but yes the base concept on how the AI-API works is adapted from BattleSnake
-because we really liked the concept and how easily you can start with any language of your choice.
+because we really liked the idea and how easily you can start with any language of your choice.
 
 ### Will there be other game modes / rules?
 

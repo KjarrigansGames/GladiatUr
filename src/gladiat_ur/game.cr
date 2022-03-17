@@ -49,7 +49,7 @@ module GladiatUr
 
         current_color = turn(current_color)
       rescue err : InvalidMove
-        end_game(reason: :invalid_move, winner: opponent(current_color))
+        break end_game(reason: :invalid_move, winner: opponent(current_color))
       end
 
       save_metadata

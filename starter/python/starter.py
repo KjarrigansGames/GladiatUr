@@ -47,7 +47,7 @@ def handle_end():
 
 
 if __name__ == "__main__":
-    logging.getLogger("werkzeug").setLevel(logging.ERROR)
+    logging.getLogger("werkzeug").setLevel(logging.INFO)
     logging.basicConfig(level=logging.INFO)
 
     addr = os.environ.get("BIND_ADDR", "127.0.0.1")
