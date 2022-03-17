@@ -5,7 +5,7 @@ before_all do |env|
   env.response.content_type = "application/json"
 end
 
-get "/info" do
+get "/" do
   {
     version: GladiatUr::VERSION
   }.to_json
